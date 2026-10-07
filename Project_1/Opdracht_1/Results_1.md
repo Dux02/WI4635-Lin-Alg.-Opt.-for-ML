@@ -75,21 +75,28 @@ where division is applied feature by feature. The fitted coefficients are in sta
 The implementation uses NumPy least squares rather than explicitly forming a matrix inverse. Ridge is solved through an augmented least-squares system:
 
 $$
-\min_\theta\left\|
-\begin{bmatrix} Z \\ \sqrt{\lambda}I \end{bmatrix}\theta
+\min_{\theta}
+\left\|
+\begin{bmatrix}
+Z \\
+\sqrt{\lambda}I
+\end{bmatrix}
+\theta
 -
-\begin{bmatrix} y_c \\ 0 \end{bmatrix}
+\begin{bmatrix}
+y_c \\
+0
+\end{bmatrix}
 \right\|_2^2.
 $$
-
-The penalty applies to standardized coefficients. Its numerical scale corresponds to a sum-of-squares loss; changing the loss to mean squared error changes the equivalent numerical lambda.
-
-### Performance measure and results
 
 The performance measure is mean squared error:
 
 $$
-\operatorname{MSE}(y,\hat y)=\frac{1}{n}\sum_{i=1}^{n}(y_i-\hat y_i)^2.
+\mathrm{MSE}(y,\hat y)
+=
+\frac{1}{n}
+\sum_{i=1}^{n}(y_i-\hat y_i)^2.
 $$
 
 | Data set | Features | OLS train MSE | OLS test MSE | Ridge train MSE | Ridge test MSE | Test MSE reduction with ridge |
