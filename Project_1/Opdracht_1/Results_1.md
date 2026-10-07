@@ -1,191 +1,123 @@
-# OLS and ridge regression on synthetic data
-
-## Assignment
-- (a) Generate a 300 ×20 data matrix X, where each entry is uniformly random. Generate
-an outcome vector y, which is a linear combination of the columns of X with uniformly
-random weights, and some Gaussian noise added to each entry of y.
-- (b) Write a function to divide the data set into a train and test sets.
-- (c) Write functions for OLS and ridge regression and apply them to your synthetic data set.
-Discuss the performance on train and test sets.
-- (d) Create a data matrix with many multicolinearities by adding a large number (say, 200)
-columns to X that are linear combinations of the original 20 columns with some Gaussian
-noise added to each entry. Run OLS and ridge regression and discuss the performance on
-train and test sets. Is it hard to find a good value for λ?
-- (e) Now instead of adding multicolinearities, add many irrelevant feature columns to X which
-have no relation to the outcome vector y. Again run OLS and ridge regression and discuss
-the performance on train and test sets.
-
+# OLS and ridge regression: results and discussion
 
 ## Experimental setup
 
-This experiment compares ordinary least squares (OLS) and ridge regression on three data sets:
-
-1. The original 300 observations with 20 useful features.
-2. The original features plus 200 nearly collinear features.
-3. The original features plus 200 independent, irrelevant features.
-
-All experiments use the same outcome vector and the same train/test row split. The training set contains 240 observations and the test set contains 60. Results refer to one random realization, rather than an average over repeated experiments.
-
-## (a) Generate the data
-
-Each entry of the original matrix is sampled independently from a uniform distribution on [0, 1). The 20 true weights are also sampled independently from this distribution. The outcome is
+A synthetic data set was generated with 300 observations and 20 features. Each entry of the feature matrix and each true coefficient was sampled independently from a uniform distribution on [0, 1). The outcome was generated as
 
 $$
 y = X\beta + \varepsilon, \qquad \varepsilon_i \sim \mathcal{N}(0, 0.1^2).
 $$
 
-The outcome noise variance is 0.01. A predictor that knows the true relationship has expected test MSE 0.01. This is a population benchmark; a finite test sample can produce a value above or below it.
+The observations were randomly divided into 240 training samples and 60 test samples. The same observations were assigned to the training and test sets in all three experiments. The outcome vector remained unchanged when additional features were introduced.
 
-The generated true weights are:
-
-```text
-0.45547638, 0.11885799, 0.56917343, 0.15642883, 0.06095833, 0.49866783, 0.65537345, 0.85414731, 0.78283555, 0.85724051, 0.76006877, 0.70323940, 0.01013757, 0.62610231, 0.12048180, 0.05866713, 0.15641215, 0.82329216, 0.74384939, 0.94877241
-```
-
-## (b) Split the data
-
-The row indices are randomly permuted, with 20% assigned to the test set. Matching indices are used for X and y, keeping each observation paired with its outcome. The same split seed is used for all three experiments.
-
-The test set is used only for final evaluation. Five-fold cross-validation selects the ridge penalty using the training set. Each cross-validation fit uses 192 training observations and 48 validation observations.
-
-## (c) Fit OLS and ridge regression
-
-For each fit, features are centered and divided by their training standard deviations. The outcome is centered using its training mean. Validation and test data use those same fitted statistics, preventing information leakage.
-
-Let Z denote the standardized training matrix and let y_c denote the centered outcome. OLS minimizes
+Features were standardized using the training means and standard deviations. The same transformation was applied to the test set. An intercept was included through centering and was not penalized. Ridge minimized the sum of squared residuals plus a penalty on the standardized coefficients:
 
 $$
-\|y_c - Z\theta\|_2^2.
+\|y_c-Z\theta\|_2^2 + \lambda\|\theta\|_2^2,
 $$
 
-Ridge minimizes
+where Z is the standardized feature matrix and y_c is the centered outcome. OLS corresponds to lambda = 0.
+
+The ridge penalty was selected using five-fold cross-validation on the training set, with candidates consisting of zero and 41 logarithmically spaced positive values between 0.0001 and 10000. Preprocessing was fitted separately within each fold. The selected model was then fitted on the full training set and evaluated on the held-out test set.
+
+Performance was measured using mean squared error:
 
 $$
-\|y_c - Z\theta\|_2^2 + \lambda\|\theta\|_2^2.
+\mathrm{MSE}=\frac{1}{n}\sum_{i=1}^{n}(y_i-\hat y_i)^2.
 $$
 
-The intercept is handled by centering and is not penalized. Predictions are
+## Results
 
-$$
-\hat y = \bar y + \left(\frac{X-\mu_X}{s_X}\right)\hat\theta,
-$$
-
-where division is applied feature by feature. The fitted coefficients are in standardized feature units. To express them in the original units, use beta_hat = theta_hat / s_X and intercept = y_mean - mu_X @ beta_hat.
-
-The implementation uses NumPy least squares rather than explicitly forming a matrix inverse. Ridge is solved through an augmented least-squares system:
-
-$$
-\min_{\theta}
-\left\|
-\begin{bmatrix}
-Z \\
-\sqrt{\lambda}I
-\end{bmatrix}
-\theta
--
-\begin{bmatrix}
-y_c \\
-0
-\end{bmatrix}
-\right\|_2^2.
-$$
-
-The performance measure is mean squared error:
-
-$$
-\mathrm{MSE}(y,\hat y)
-=
-\frac{1}{n}
-\sum_{i=1}^{n}(y_i-\hat y_i)^2.
-$$
-
-| Data set | Features | OLS train MSE | OLS test MSE | Ridge train MSE | Ridge test MSE | Test MSE reduction with ridge |
+| Data set | Features | Selected lambda | OLS train MSE | OLS test MSE | Ridge train MSE | Ridge test MSE |
 |---|---:|---:|---:|---:|---:|---:|
-| Original data | 20 | 0.011222 | 0.011163 | 0.011226 | 0.011124 | 0.35% |
-| Nearly collinear features | 220 | 0.001306 | 0.149511 | 0.009864 | 0.011872 | 92.06% |
-| Irrelevant features | 220 | 0.001179 | 0.109447 | 0.002980 | 0.061253 | 44.03% |
+| Original data | 20 | 0.630957 | 0.011222 | 0.011163 | 0.011226 | 0.011124 |
+| Nearly collinear features | 220 | 10 | 0.001306 | 0.149511 | 0.009864 | 0.011872 |
+| Irrelevant features | 220 | 6.30957 | 0.001179 | 0.109447 | 0.002980 | 0.061253 |
 
-The percentage reduction is 100 times (OLS test MSE - ridge test MSE) / OLS test MSE. A negative value would indicate worse test performance with ridge.
+![Training and test mean squared errors](img/train_test_mse.png)
 
-![Training and test MSE for OLS and ridge](img/train_test_mse.png)
+*Figure 1. Training and test errors for ordinary least squares and ridge regression. The vertical scale is logarithmic and shared across panels. The dashed line represents the noise variance, 0.01. Source: the numerical experiment reported here.*
 
-*Figure 1. Training and test errors on a shared logarithmic vertical scale. The dashed line marks the outcome noise variance, 0.01. Source: calculations and plotting by regression_assignment.py using the synthetic data generated in this run.*
+## (c) Regression with the original features
 
-With the original features, OLS and ridge have similar train and test errors, close to the noise variance. There are substantially more training observations than features, and the model matches the relationship used to generate the data. Ridge offers only a small change in test performance for this realization.
+For the original design matrix, both estimators achieved training and test errors close to 0.01. Since the outcome was generated by a linear model with independent Gaussian noise of variance 0.01, this value represents the irreducible error in the population prediction problem. The empirical test error need not equal this value exactly because it is computed from a finite sample.
 
-OLS has training error no larger than ridge on the same data because it minimizes the unpenalized residual sum of squares. Ridge trades some training fit for more stable estimation.
+The training set contains 240 observations and 20 explanatory variables. In this setting, the observed errors suggest that the least-squares estimator recovers the predictive relationship accurately. The small difference between training and test error provides no indication of substantial overfitting in this realization.
 
-## (d) Add nearly collinear features
+Cross-validation selected a ridge parameter of 0.630957. The resulting test MSE was 0.011124, compared with 0.011163 for OLS. Thus, regularization produced only a marginal improvement in predictive accuracy. The difference is too small to establish a reliable advantage from this experiment alone.
 
-The additional matrix is generated as
+The ridge training error was slightly larger than the OLS training error. This is consistent with the optimization objectives: OLS minimizes the residual sum of squares, whereas ridge balances residual error against the squared Euclidean norm of the coefficient vector.
+
+## (d) Regression with nearly collinear features
+
+Adding 200 approximate linear combinations of the original columns increased the number of explanatory variables to 220. The added Gaussian perturbations prevent exact linear dependence in general, but the columns remain nearly dependent. Consequently, coefficient estimation becomes sensitive to perturbations in the outcome.
+
+This sensitivity can be understood through the singular value decomposition of the standardized design matrix. Write the compact decomposition as
 
 $$
-X_{\mathrm{extra}} = XA + E,
+Z = U\Sigma V^T,
 $$
 
-where A is a 20 by 200 matrix with independent uniform entries on [-1, 1), and each entry of E is Gaussian noise with standard deviation 0.05. The original and additional columns are concatenated, giving 220 features. The outcome y remains unchanged.
+with positive singular values sigma_j and corresponding singular vectors u_j and v_j. The least-squares and ridge estimators are
 
-Because the added columns are approximately linear combinations of the original columns, the matrix has directions with small singular values. OLS amplifies outcome noise along those directions. Without the added feature noise, the added columns would be exactly redundant; the small noise instead creates extra directions that OLS can use to fit training residuals.
+$$
+\hat\theta_{\mathrm{OLS}}
+=
+\sum_{j=1}^{r}\frac{u_j^T y_c}{\sigma_j}v_j,
+$$
 
-The observed OLS training error decreases strongly, while its test error increases. This gap indicates overfitting. Ridge accepts a larger training error but achieves a test error close to the original-data result. It limits coefficient growth in poorly determined directions.
+and
 
-## Choosing lambda
+$$
+\hat\theta_{\lambda}
+=
+\sum_{j=1}^{r}
+\frac{\sigma_j}{\sigma_j^2+\lambda}
+(u_j^T y_c)v_j.
+$$
 
-The candidate set contains zero and 41 logarithmically spaced positive values from 0.0001 to 10000. Zero corresponds to OLS. Each candidate is evaluated with five-fold cross-validation, and the candidate with the smallest mean validation MSE is selected. The model is then refitted on all 240 training observations.
+Small singular values cause the least-squares estimator to amplify components of the noise. Ridge replaces the inverse singular-value factors with bounded regularized factors. Relative to OLS, the coefficient component in direction v_j is multiplied by
 
-| Data set | Selected lambda | Minimum mean cross-validation MSE |
-|---|---:|---:|
-| Original data | 0.630957 | 0.013857 |
-| Nearly collinear features | 10 | 0.014166 |
-| Irrelevant features | 6.30957 | 0.140517 |
+$$
+\frac{\sigma_j^2}{\sigma_j^2+\lambda}.
+$$
 
-![Cross-validation MSE versus the ridge penalty](img/cross_validation.png)
+Regularization therefore suppresses poorly determined directions more strongly than directions associated with large singular values.
 
-*Figure 2. Mean cross-validation MSE versus lambda. The red point marks the selected candidate. A symmetric logarithmic horizontal axis allows lambda = 0 to be displayed. Vertical scales are logarithmic and differ between panels. Source: five-fold cross-validation and plotting by regression_assignment.py in this run.*
+The numerical results exhibit the corresponding statistical effect. OLS reduced the training MSE to 0.001306, but its test MSE increased to 0.149511. The large generalization gap indicates that the additional degrees of freedom were used to fit sample-specific fluctuations. A small residual on the training set did not translate into accurate prediction on unseen observations.
 
-A broad minimum suggests that several penalty values give similar validation performance. A narrow minimum suggests greater sensitivity to the choice of lambda. As a descriptive check, the following table lists the smallest and largest tested candidates whose validation error lies within 5% of the observed minimum. These endpoints summarize qualifying grid points; they do not guarantee that every intermediate value qualifies, and they are not confidence intervals.
+With lambda = 10, ridge achieved a training MSE of 0.009864 and a test MSE of 0.011872. The test error was approximately 92.06% lower than that of OLS and remained close to the original-data benchmark. These results are consistent with the bias–variance tradeoff: coefficient shrinkage introduces bias but can substantially reduce estimator variance. This experiment measures prediction errors rather than estimating bias and variance separately.
 
-| Data set | Smallest qualifying lambda | Largest qualifying lambda | Number of qualifying grid points |
-|---|---:|---:|---:|
-| Original data | 0 | 6.30957 | 26 |
-| Nearly collinear features | 2.51189 | 63.0957 | 8 |
-| Irrelevant features | 3.98107 | 15.8489 | 4 |
+### Selection of the regularization parameter
 
-Cross-validation makes it practical to find a useful penalty, but it does not establish a uniquely optimal population value. Validation errors depend on the random sample, fold assignment, and candidate grid. If the selected value lies at a positive grid boundary, expanding the grid can check whether the minimum lies outside the searched range.
+![Cross-validation error as a function of the regularization parameter](img/cross_validation.png)
 
-With 220 features, each cross-validation fit has fewer observations (192) than features. The final fit has more observations (240) than features. These are different estimation regimes, so cross-validation errors can differ noticeably from final test errors. Sampling variability also contributes to the difference.
+*Figure 2. Mean five-fold cross-validation error as a function of lambda. The red markers identify the selected candidates. The horizontal scale includes zero through a symmetric logarithmic transformation; the logarithmic vertical scales differ between panels. Source: cross-validation applied to the training data in this experiment.*
 
-## (e) Add irrelevant features
+The cross-validation curve for the nearly collinear data has a minimum near lambda = 10. Small penalties provide insufficient control of the poorly determined coefficient directions. Excessively large penalties produce substantial shrinkage and increase approximation bias, leading to underfitting.
 
-For this experiment, 200 new columns are sampled independently from a uniform distribution on [0, 1), using a separate random seed. They are appended to the original X, rather than to the nearly collinear matrix. The outcome remains unchanged.
+The minimum is sufficiently broad that several nearby candidate values yield comparable validation errors. Thus, identifying a useful regularization parameter is practical with a logarithmic search grid. Identifying a uniquely optimal value is more difficult because the validation error depends on the finite sample, fold assignment, and grid resolution.
 
-The added features have no population relationship with y. However, finite samples produce accidental correlations, and OLS uses these to fit training noise. Its low training error and much larger test error show overfitting.
+The original-data curve is nearly flat over a range of small penalties, consistent with the similar performance of OLS and ridge. The irrelevant-feature curve shows a more localized minimum near the selected value of 6.30957.
 
-Ridge reduces test error relative to OLS, but the result remains worse than using only the original features. Unlike the redundant columns in part (d), the irrelevant columns provide no additional representation of the signal. Ridge shrinks their coefficients, but also shrinks useful coefficients and does not explicitly discard features.
+Each cross-validation fit uses 192 observations. The expanded problems therefore have more variables than observations within the folds, whereas the final fit uses 240 observations and 220 variables. This change in the estimation regime, together with sampling variability, can contribute to differences between cross-validation and test errors. The held-out test set remains separate from parameter selection.
 
-## Conclusions and limitations
+## (e) Regression with irrelevant features
 
-On this realization, OLS performs well with the original 20 features. Adding 200 nearly collinear or irrelevant columns lowers its training error while worsening its test performance. Ridge improves generalization in both expanded data sets, with nearly collinear features recovering performance close to the original-data benchmark.
+In the third experiment, 200 independent random columns were appended to the original design matrix. Their population coefficients are zero because they carry no information about the response beyond the original predictors. Nevertheless, empirical correlations between these columns and the response generally do not vanish in a finite sample.
 
-These conclusions describe one generated data set and one split. Repeated experiments across independent seeds would quantify how stable the comparisons are. The observed test set contains only 60 outcomes, so small differences between models should not be interpreted as decisive evidence.
+OLS achieved a training MSE of 0.001179 and a test MSE of 0.109447. The additional variables improved the fit to the training observations but substantially degraded generalization. The estimated model exploited accidental sample correlations, including correlations with the outcome noise.
 
-## Reproducibility and output files
+Ridge with lambda = 6.30957 increased the training MSE to 0.002980 and reduced the test MSE to 0.061253, an improvement of approximately 44.03% relative to OLS. However, this test error remained substantially larger than the ridge error of 0.011124 for the original data.
 
-- Original-data seed: 42.
-- Nearly collinear-feature seed: 43.
-- Irrelevant-feature seed: 44.
-- Train/test split seed: 42.
-- Cross-validation fold seed: 45.
-- Outcome noise standard deviation: 0.1.
-- Nearly collinear-feature noise standard deviation: 0.05.
-- Requirements: Python, NumPy, and Matplotlib.
+The ridge penalty controls coefficient magnitude but does not generally produce a sparse coefficient vector. It therefore reduces the influence of irrelevant variables without explicitly eliminating them. At the same time, it shrinks the coefficients of the informative variables. The selected penalty balances these competing effects.
 
-Run:
+The distinction between the two expanded design matrices is relevant. Nearly collinear variables supply redundant representations of the informative directions. Independent irrelevant variables enlarge the feature space without adding information about the response. In this realization, regularization was more successful at preserving predictive accuracy in the former setting.
 
-```bash
-python regression_assignment.py
-```
+## Conclusion
 
-The script saves results.md beside itself and saves both PNG figures in its img subfolder before displaying the figures. The Markdown image references are relative paths. Keep results.md and img together when moving or sharing the report.
+The original linear regression problem was estimated accurately by both OLS and ridge. Increasing the feature dimension from 20 to 220 reduced the OLS training error but increased its test error in both expanded experiments. Training accuracy alone was therefore an inadequate measure of predictive performance.
 
-The figures and numerical tables are generated from this experiment; no external images or experimental results are used.
+Ridge improved generalization by regularizing the coefficient vector. For nearly collinear features, it recovered test performance close to the noise benchmark. For irrelevant features, it reduced overfitting but did not recover the performance obtained using only the informative predictors.
+
+These observations illustrate the roles of conditioning, model complexity, and regularization in least-squares prediction. They describe one data realization and one train/test partition; repeated experiments would be required to quantify variability and assess the stability of the comparisons.
