@@ -1,17 +1,17 @@
 # OLS and ridge regression on synthetic data
 
 ## Assignment
-(a) Generate a 300 ×20 data matrix X, where each entry is uniformly random. Generate
+- (a) Generate a 300 ×20 data matrix X, where each entry is uniformly random. Generate
 an outcome vector y, which is a linear combination of the columns of X with uniformly
 random weights, and some Gaussian noise added to each entry of y.
-(b) Write a function to divide the data set into a train and test sets.
-(c) Write functions for OLS and ridge regression and apply them to your synthetic data set.
+- (b) Write a function to divide the data set into a train and test sets.
+- (c) Write functions for OLS and ridge regression and apply them to your synthetic data set.
 Discuss the performance on train and test sets.
-(d) Create a data matrix with many multicolinearities by adding a large number (say, 200)
+- (d) Create a data matrix with many multicolinearities by adding a large number (say, 200)
 columns to X that are linear combinations of the original 20 columns with some Gaussian
 noise added to each entry. Run OLS and ridge regression and discuss the performance on
 train and test sets. Is it hard to find a good value for λ?
-(e) Now instead of adding multicolinearities, add many irrelevant feature columns to X which
+- (e) Now instead of adding multicolinearities, add many irrelevant feature columns to X which
 have no relation to the outcome vector y. Again run OLS and ridge regression and discuss
 the performance on train and test sets.
 
